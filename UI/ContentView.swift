@@ -3,45 +3,47 @@ import SwiftUI
 struct ContentView: View {
     @StateObject var camera = CameraController()
     
+    // GeometryReader supaya UI memenuhi seluruh layar secara dinamis
     var body: some View {
-        ZStack(alignment: .bottom) {
-            if camera.isRunning {
-                CameraPreviewView(session: camera.session)
-                    .ignoresSafeArea()
-                
-                // Rotasi UI supaya tombol gak nyangkut di tengah pas landscape
-                VStack {
-                    Spacer()
-                    HStack {
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                if camera.isRunning {
+                    CameraPreviewView(session: camera.session)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .ignoresSafeArea()
+                    
+                    VStack {
                         Spacer()
                         ControlPanelView()
                             .padding(.bottom, 20)
-                        Spacer()
+                        
+                        Button(action: {
+                            camera.toggleRecording()
+                        }) {
+                            Circle()
+                                .fill(camera.isRecording ? Color.red : Color.white)
+                                .frame(width: 70, height: 70)
+                                .overlay(
+                                    Circle().stroke(Color.black.opacity(0.3), lineWidth: 2)
+                                )
+                        }
+                        .padding(.bottom, 40)
                     }
-                    
-                    Button(action: {
-                        camera.toggleRecording()
-                    }) {
-                        Circle()
-                            .fill(camera.isRecording ? Color.red : Color.white)
-                            .frame(width: 70, height: 70)
-                            .overlay(
-                                Circle().stroke(Color.black.opacity(0.3), lineWidth: 2)
-                            )
+                    .frame(width: geometry.size.width)
+                } else {
+                    Color.black.ignoresSafeArea()
+                    VStack {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        Text("Memuat Kamera...")
+                            .foregroundColor(.white)
+                            .padding(.top, 10)
                     }
-                    .padding(.bottom, 40)
-                }
-            } else {
-                Color.black.ignoresSafeArea()
-                VStack {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    Text("Memuat Kamera...")
-                        .foregroundColor(.white)
-                        .padding(.top, 10)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
                 }
             }
         }
+        .ignoresSafeArea(.all, edges: .all)
         .onAppear {
             camera.start()
         }

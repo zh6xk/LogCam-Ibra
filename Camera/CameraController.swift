@@ -62,7 +62,6 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
             self.session.beginConfiguration()
             self.session.sessionPreset = .high
 
-            // Video Input
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
                 self.session.commitConfiguration()
                 return
@@ -72,14 +71,12 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                 self.session.addInput(input)
             }
 
-            // Audio Input
             if let audioDevice = AVCaptureDevice.default(for: .audio),
                let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
                self.session.canAddInput(audioInput) {
                 self.session.addInput(audioInput)
             }
 
-            // Video Output
             self.videoDataOutput.alwaysDiscardsLateVideoFrames = true
             let targetFormat = kCVPixelFormatType_32BGRA
             if self.videoDataOutput.availableVideoPixelFormatTypes.contains(targetFormat) {
@@ -90,13 +87,11 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                 self.session.addOutput(self.videoDataOutput)
             }
 
-            // Audio Output
             self.audioDataOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
             if self.session.canAddOutput(self.audioDataOutput) {
                 self.session.addOutput(self.audioDataOutput)
             }
 
-            // Setup Log
             if #available(iOS 17.0, *) {
                 if let logFormat = device.formats.first(where: { $0.supportedColorSpaces.contains(.appleLog) }) {
                     do {
@@ -110,7 +105,6 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
 
             self.session.commitConfiguration()
             
-            // Sync orientation pertama kali
             DispatchQueue.main.async {
                 self.orientationChanged()
             }
