@@ -1,10 +1,10 @@
 import AVFoundation
-
 import VideoToolbox
 
 class AssetWriterManager {
     var writer: AVAssetWriter?
     var input: AVAssetWriterInput?
+    var isWriting = false
 
     func setupAssetWriter(outputURL: URL, width: Int, height: Int) throws {
         writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
@@ -25,16 +25,35 @@ class AssetWriterManager {
         if let input = input, let writer = writer, writer.canAdd(input) {
             writer.add(input)
         }
+        isWriting = true
     }
 
     func write(sampleBuffer: CMSampleBuffer) {
-        guard let writer = writer, let input = input else { return }
+        guard isWriting, let writer = writer, let input = input else { return }
+        
         if writer.status == .unknown {
             writer.startWriting()
             writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
         }
-        if input.isReadyForMoreMediaData {
+        
+        if writer.status == .writing && input.isReadyForMoreMediaData {
             input.append(sampleBuffer)
+        }
+    }
+    
+    func stopRecording(completion: @escaping (URL?) -> Void) {
+        isWriting = false
+        guard let writer = writer, writer.status == .writing else {
+            completion(nil)
+            return
+        }
+        
+        input?.markAsFinished()
+        let url = writer.outputURL
+        writer.finishWriting {
+            self.writer = nil
+            self.input = nil
+            completion(url)
         }
     }
 }

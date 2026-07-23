@@ -8,8 +8,23 @@ struct ContentView: View {
             if camera.isRunning {
                 CameraPreviewView(session: camera.session)
                     .ignoresSafeArea()
-                ControlPanelView()
-                    .padding(.bottom, 120)
+                
+                VStack {
+                    ControlPanelView()
+                        .padding(.bottom, 20)
+                    
+                    Button(action: {
+                        camera.toggleRecording()
+                    }) {
+                        Circle()
+                            .fill(camera.isRecording ? Color.red : Color.white)
+                            .frame(width: 70, height: 70)
+                            .overlay(
+                                Circle().stroke(Color.black.opacity(0.3), lineWidth: 2)
+                            )
+                    }
+                    .padding(.bottom, 40)
+                }
             } else {
                 Color.black.ignoresSafeArea()
                 VStack {

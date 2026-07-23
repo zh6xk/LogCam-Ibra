@@ -1,12 +1,15 @@
 import AVFoundation
+import UIKit
 
-final class CameraController: NSObject, ObservableObject {
+final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     var videoDevice: AVCaptureDevice?
     let videoDataOutput = AVCaptureVideoDataOutput()
+    var assetWriterManager = AssetWriterManager()
     
     @Published var isRunning = false
+    @Published var isRecording = false
     private var isConfigured = false
 
     override init() {
@@ -39,7 +42,6 @@ final class CameraController: NSObject, ObservableObject {
             self.session.sessionPreset = .high
 
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-                print("Kamera tidak ditemukan")
                 self.session.commitConfiguration()
                 return
             }
@@ -51,20 +53,21 @@ final class CameraController: NSObject, ObservableObject {
                     self.session.addInput(input)
                 }
             } catch {
-                print("Gagal buat input: \(error)")
                 self.session.commitConfiguration()
                 return
             }
 
             self.videoDataOutput.alwaysDiscardsLateVideoFrames = true
             
-            // Format 32BGRA
             let targetFormat = kCVPixelFormatType_32BGRA
             if self.videoDataOutput.availableVideoPixelFormatTypes.contains(targetFormat) {
                 self.videoDataOutput.videoSettings = [
                     kCVPixelBufferPixelFormatTypeKey as String: Int(targetFormat)
                 ]
             }
+
+            // Set delegate ke class ini buat nangkep frame per frame
+            self.videoDataOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
 
             if self.session.canAddOutput(self.videoDataOutput) {
                 self.session.addOutput(self.videoDataOutput)
@@ -77,9 +80,7 @@ final class CameraController: NSObject, ObservableObject {
                         device.activeFormat = logFormat
                         device.activeColorSpace = .appleLog
                         device.unlockForConfiguration()
-                    } catch {
-                        print("Gagal lock device: \(error)")
-                    }
+                    } catch {}
                 }
             }
 
@@ -90,6 +91,36 @@ final class CameraController: NSObject, ObservableObject {
                 self.isConfigured = true
                 self.isRunning = true
             }
+        }
+    }
+    
+    func toggleRecording() {
+        if isRecording {
+            assetWriterManager.stopRecording { url in
+                DispatchQueue.main.async {
+                    self.isRecording = false
+                    if let url = url {
+                        UISaveVideoAtPathToSavedPhotosAlbum(url.path, nil, nil, nil)
+                    }
+                }
+            }
+        } else {
+            let tempDir = FileManager.default.temporaryDirectory
+            let url = tempDir.appendingPathComponent("log_\(UUID().uuidString).mov")
+            do {
+                try assetWriterManager.setupAssetWriter(outputURL: url, width: 1920, height: 1080)
+                DispatchQueue.main.async {
+                    self.isRecording = true
+                }
+            } catch {
+                print("Gagal setup recorder: \(error)")
+            }
+        }
+    }
+    
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        if isRecording {
+            assetWriterManager.write(sampleBuffer: sampleBuffer)
         }
     }
 }
