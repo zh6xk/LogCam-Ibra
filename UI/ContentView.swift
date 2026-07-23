@@ -62,6 +62,7 @@ struct ContentView: View {
                 }
             }
         }
+        }
         .ignoresSafeArea(.all)
         .onAppear {
             camera.start()
