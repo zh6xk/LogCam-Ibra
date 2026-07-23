@@ -4,13 +4,5 @@
 <dict>
     <key>NSCameraUsageDescription</key>
     <string>Aplikasi membutuhkan akses kamera untuk merekam video log.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Aplikasi membutuhkan akses mikrofon untuk merekam audio.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Aplikasi menyimpan video hasil rekaman ke galeri.</string>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>audio</string>
-    </array>
 </dict>
 </plist>
