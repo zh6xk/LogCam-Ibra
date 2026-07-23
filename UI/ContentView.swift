@@ -9,9 +9,15 @@ struct ContentView: View {
                 CameraPreviewView(session: camera.session)
                     .ignoresSafeArea()
                 
+                // Rotasi UI supaya tombol gak nyangkut di tengah pas landscape
                 VStack {
-                    ControlPanelView()
-                        .padding(.bottom, 20)
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        ControlPanelView()
+                            .padding(.bottom, 20)
+                        Spacer()
+                    }
                     
                     Button(action: {
                         camera.toggleRecording()
