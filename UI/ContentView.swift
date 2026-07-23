@@ -21,5 +21,8 @@ struct ContentView: View {
                 }
             }
         }
+        .onAppear {
+            camera.start()
+        }
     }
 }

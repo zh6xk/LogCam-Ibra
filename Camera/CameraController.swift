@@ -7,13 +7,18 @@ final class CameraController: NSObject, ObservableObject {
     let videoDataOutput = AVCaptureVideoDataOutput()
     
     @Published var isRunning = false
+    private var isConfigured = false
 
     override init() {
         super.init()
+    }
+    
+    func start() {
+        if isConfigured { return }
         checkPermission()
     }
     
-    func checkPermission() {
+    private func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             self.configureSession()
@@ -28,7 +33,7 @@ final class CameraController: NSObject, ObservableObject {
         }
     }
 
-    func configureSession() {
+    private func configureSession() {
         sessionQueue.async {
             self.session.beginConfiguration()
             self.session.sessionPreset = .inputPriority
@@ -51,16 +56,15 @@ final class CameraController: NSObject, ObservableObject {
 
             self.videoDataOutput.alwaysDiscardsLateVideoFrames = true
             
-            // Hindari force close kalau device gak support 10-bit YUV
+            if self.session.canAddOutput(self.videoDataOutput) {
+                self.session.addOutput(self.videoDataOutput)
+            }
+            
             let targetFormat = kCVPixelFormatType_422YpCbCr10BiPlanarFullRange
             if self.videoDataOutput.availableVideoPixelFormatTypes.contains(targetFormat) {
                 self.videoDataOutput.videoSettings = [
                     kCVPixelBufferPixelFormatTypeKey as String: Int(targetFormat)
                 ]
-            }
-            
-            if self.session.canAddOutput(self.videoDataOutput) {
-                self.session.addOutput(self.videoDataOutput)
             }
 
             if #available(iOS 17.0, *) {
@@ -76,6 +80,7 @@ final class CameraController: NSObject, ObservableObject {
             self.session.startRunning()
             
             DispatchQueue.main.async {
+                self.isConfigured = true
                 self.isRunning = true
             }
         }
