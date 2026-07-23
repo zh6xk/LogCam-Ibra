@@ -1,5 +1,7 @@
 import AVFoundation
 
+import VideoToolbox
+
 class AssetWriterManager {
     var writer: AVAssetWriter?
     var input: AVAssetWriterInput?
@@ -13,7 +15,7 @@ class AssetWriterManager {
             AVVideoHeightKey: height,
             AVVideoCompressionPropertiesKey: [
                 AVVideoAverageBitRateKey: 150_000_000,
-                AVVideoProfileLevelKey: kVTProfileLevel_HEVC_Main10_AutoLevel as String
+                AVVideoProfileLevelKey: kVTProfileLevel_HEVC_Main10_AutoLevel
             ]
         ]
 
