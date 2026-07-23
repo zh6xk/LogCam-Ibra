@@ -66,11 +66,17 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                 ]
             }
 
-            // Set delegate ke class ini buat nangkep frame per frame
             self.videoDataOutput.setSampleBufferDelegate(self, queue: self.sessionQueue)
 
             if self.session.canAddOutput(self.videoDataOutput) {
                 self.session.addOutput(self.videoDataOutput)
+                
+                // Fix orientasi rekam portrait (Video Connection)
+                if let connection = self.videoDataOutput.connection(with: .video) {
+                    if connection.isVideoOrientationSupported {
+                        connection.videoOrientation = .portrait
+                    }
+                }
             }
 
             if #available(iOS 17.0, *) {
@@ -108,7 +114,8 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
             let tempDir = FileManager.default.temporaryDirectory
             let url = tempDir.appendingPathComponent("log_\(UUID().uuidString).mov")
             do {
-                try assetWriterManager.setupAssetWriter(outputURL: url, width: 1920, height: 1080)
+                // Fix dimensi Portrait (Height lebih besar dari Width)
+                try assetWriterManager.setupAssetWriter(outputURL: url, width: 1080, height: 1920)
                 DispatchQueue.main.async {
                     self.isRecording = true
                 }
