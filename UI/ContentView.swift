@@ -6,17 +6,21 @@ struct ContentView: View {
     // Simpan sudut rotasi UI untuk muter tombol secara animasi
     @State private var uiRotation: Double = 0
     
+    // 1. Tambahkan state untuk orientasi UI
+    @State private var deviceOrientation: UIDeviceOrientation = UIDevice.current.orientation
+
     var body: some View {
-        ZStack {
-            if camera.isRunning {
-                // Kamera 100% full screen, ignoresSafeArea supaya masuk sampe ke poni (notch/island)
-                CameraPreviewView(session: camera.session)
-                    .ignoresSafeArea(.all)
-                
-                // UI Overlay, ditumpuk di atas kamera. Posisinya tetap (Portrait-style), 
-                // tapi isinya kita puter biar gak kepotong SwiftUI.
-                VStack {
-                    Spacer()
+        GeometryReader { geometry in
+            ZStack {
+                if camera.isRunning {
+                    // Kamera 100% full screen
+                    CameraPreviewView(session: camera.session)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .ignoresSafeArea(.all)
+                    
+                    // UI Overlay
+                    VStack {
+                        Spacer()
                     
                     // Box indikator (ISO dkk) yang tadinya horizontal, sekarang disusun vertikal
                     VStack(spacing: 10) {
@@ -58,6 +62,7 @@ struct ContentView: View {
                 }
             }
         }
+        .ignoresSafeArea(.all)
         .onAppear {
             camera.start()
             // Pasangkan notifikasi rotasi untuk mutar UI secara halus

@@ -34,6 +34,8 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
         
         if let newOrientation = newOrientation {
             currentOrientation = newOrientation
+            
+            // Atur orientasi data video yang direkam ke file
             sessionQueue.async {
                 if let connection = self.videoDataOutput.connection(with: .video), connection.isVideoOrientationSupported {
                     connection.videoOrientation = newOrientation
