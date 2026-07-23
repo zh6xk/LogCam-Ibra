@@ -3,28 +3,25 @@ import SwiftUI
 struct ContentView: View {
     @StateObject var camera = CameraController()
     
-    // Nangkep orientasi dari system supaya UI ganti layout otomatis
-    @Environment(\.verticalSizeClass) var verticalSizeClass
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
-    
-    var isLandscape: Bool {
-        return verticalSizeClass == .compact
-    }
+    // Nangkep rotasi device untuk ngatur tombol
+    @State private var isLandscape: Bool = UIDevice.current.orientation.isLandscape
     
     var body: some View {
         ZStack {
             if camera.isRunning {
+                // Kamera jadi background full
                 CameraPreviewView(session: camera.session)
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.all)
                 
+                // UI Overlay
                 if isLandscape {
-                    // Tampilan Landscape: Tombol di Kanan, Info di Bawah Kiri
+                    // Landscape: Tombol di kanan, teks di kiri bawah
                     HStack {
                         VStack {
                             Spacer()
                             ControlPanelView()
                                 .padding(.bottom, 20)
-                                .padding(.leading, 20)
+                                .padding(.leading, 40)
                         }
                         
                         Spacer()
@@ -46,7 +43,7 @@ struct ContentView: View {
                         }
                     }
                 } else {
-                    // Tampilan Portrait: Tombol di Bawah Tengah
+                    // Portrait: Tombol di bawah tengah
                     VStack {
                         Spacer()
                         ControlPanelView()
@@ -78,6 +75,13 @@ struct ContentView: View {
         }
         .onAppear {
             camera.start()
+            // Pantau rotasi pas load
+            NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) { _ in
+                let orientation = UIDevice.current.orientation
+                if orientation.isLandscape || orientation.isPortrait {
+                    self.isLandscape = orientation.isLandscape
+                }
+            }
         }
     }
 }
