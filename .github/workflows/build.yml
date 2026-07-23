@@ -1,0 +1,21 @@
+name: Build unsigned IPA
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode Project
+        run: xcodegen generate
+      - name: Build IPA
+        run: |
+          xcodebuild clean build -project LogCam.xcodeproj -scheme LogCam -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          mkdir -p Payload
+          mv build/Release-iphoneos/LogCam.app Payload/
+          zip -r LogCam.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LogCam-IPA
+          path: LogCam.ipa

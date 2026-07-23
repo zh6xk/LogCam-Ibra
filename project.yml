@@ -1,0 +1,17 @@
+name: LogCam
+options:
+  bundleIdPrefix: com.zh6xk
+targets:
+  LogCam:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - App
+      - Camera
+      - ColorScience
+      - Recording
+      - UI
+      - Resources
+    info:
+      path: App/Info.plist
