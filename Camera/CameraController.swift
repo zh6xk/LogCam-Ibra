@@ -148,8 +148,23 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
     }
     
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        // Terapkan Shader Metal untuk Video S-Log3 kalau device tidak support Apple Log Native
+        let isVideo = output === videoDataOutput
+        
+        if isVideo {
+            if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+                // Di sini kita cek apakah format saat ini Apple Log. 
+                // Kalau bukan, kita "paksa" jadi S-Log3 pake Metal.
+                if #available(iOS 17.0, *), videoDevice?.activeColorSpace == .appleLog {
+                    // Biarkan, sudah native LOG
+                } else {
+                    // Terapkan S-Log3 via Metal Compute Shader
+                    MetalContext.shared.applyLogShader(to: pixelBuffer)
+                }
+            }
+        }
+        
         if isRecording {
-            let isVideo = output === videoDataOutput
             assetWriterManager.write(sampleBuffer: sampleBuffer, isVideo: isVideo)
         }
     }
