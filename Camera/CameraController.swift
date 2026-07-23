@@ -25,7 +25,7 @@ final class CameraController: NSObject, ObservableObject {
     private func configureSession() {
         sessionQueue.async {
             self.session.beginConfiguration()
-            self.session.sessionPreset = .vga640x480 // Paling basic, anti gagal
+            self.session.sessionPreset = .vga640x480
 
             guard let device = AVCaptureDevice.default(for: .video) else { return }
 
