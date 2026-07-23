@@ -15,3 +15,11 @@ targets:
       - Resources
     info:
       path: App/Info.plist
+      properties:
+        UILaunchStoryboardName: LaunchScreen
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSCameraUsageDescription: "Aplikasi membutuhkan akses kamera untuk merekam video log."
+        NSMicrophoneUsageDescription: "Aplikasi membutuhkan akses mikrofon untuk merekam audio."
+        NSPhotoLibraryAddUsageDescription: "Aplikasi menyimpan video hasil rekaman ke galeri."
+

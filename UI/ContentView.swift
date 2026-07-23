@@ -12,10 +12,30 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .padding()
                 
+                Button("Cek Status Izin") {
+                    let status = AVCaptureDevice.authorizationStatus(for: .video)
+                    switch status {
+                    case .authorized:
+                        cameraStatus = "Status: Sudah Diizinkan"
+                    case .denied:
+                        cameraStatus = "Status: Ditolak (Cek Settings)"
+                    case .notDetermined:
+                        cameraStatus = "Status: Belum Diminta"
+                    case .restricted:
+                        cameraStatus = "Status: Restricted"
+                    @unknown default:
+                        cameraStatus = "Status: Unknown"
+                    }
+                }
+                .padding()
+                .background(Color.green)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                
                 Button("Minta Izin Kamera") {
                     AVCaptureDevice.requestAccess(for: .video) { granted in
                         DispatchQueue.main.async {
-                            cameraStatus = granted ? "Izin Diberikan. Coba Buka Kamera." : "Izin Ditolak"
+                            cameraStatus = granted ? "Izin Diberikan." : "Izin Ditolak"
                         }
                     }
                 }
