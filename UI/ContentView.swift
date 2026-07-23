@@ -3,64 +3,49 @@ import SwiftUI
 struct ContentView: View {
     @StateObject var camera = CameraController()
     
-    // Nangkep rotasi device untuk ngatur tombol
-    @State private var isLandscape: Bool = UIDevice.current.orientation.isLandscape
+    // Simpan sudut rotasi UI untuk muter tombol secara animasi
+    @State private var uiRotation: Double = 0
     
     var body: some View {
         ZStack {
             if camera.isRunning {
-                // Kamera jadi background full
+                // Kamera 100% full screen, ignoresSafeArea supaya masuk sampe ke poni (notch/island)
                 CameraPreviewView(session: camera.session)
                     .ignoresSafeArea(.all)
                 
-                // UI Overlay
-                if isLandscape {
-                    // Landscape: Tombol di kanan, teks di kiri bawah
-                    HStack {
-                        VStack {
-                            Spacer()
-                            ControlPanelView()
-                                .padding(.bottom, 20)
-                                .padding(.leading, 40)
-                        }
-                        
-                        Spacer()
-                        
-                        VStack {
-                            Spacer()
-                            Button(action: {
-                                camera.toggleRecording()
-                            }) {
-                                Circle()
-                                    .fill(camera.isRecording ? Color.red : Color.white)
-                                    .frame(width: 70, height: 70)
-                                    .overlay(
-                                        Circle().stroke(Color.black.opacity(0.3), lineWidth: 2)
-                                    )
-                            }
-                            .padding(.trailing, 40)
-                            Spacer()
-                        }
+                // UI Overlay, ditumpuk di atas kamera. Posisinya tetap (Portrait-style), 
+                // tapi isinya kita puter biar gak kepotong SwiftUI.
+                VStack {
+                    Spacer()
+                    
+                    // Box indikator (ISO dkk) yang tadinya horizontal, sekarang disusun vertikal
+                    VStack(spacing: 10) {
+                        Text("ISO")
+                        Text("Shutter")
+                        Text("WB")
+                        Text("Focus")
                     }
-                } else {
-                    // Portrait: Tombol di bawah tengah
-                    VStack {
-                        Spacer()
-                        ControlPanelView()
-                            .padding(.bottom, 20)
-                        
-                        Button(action: {
-                            camera.toggleRecording()
-                        }) {
-                            Circle()
-                                .fill(camera.isRecording ? Color.red : Color.white)
-                                .frame(width: 70, height: 70)
-                                .overlay(
-                                    Circle().stroke(Color.black.opacity(0.3), lineWidth: 2)
-                                )
-                        }
-                        .padding(.bottom, 40)
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.black.opacity(0.6))
+                    .cornerRadius(8)
+                    .padding(.bottom, 20)
+                    .rotationEffect(.degrees(uiRotation)) // Puter Box-nya
+                    
+                    // Tombol Rekam
+                    Button(action: {
+                        camera.toggleRecording()
+                    }) {
+                        Circle()
+                            .fill(camera.isRecording ? Color.red : Color.white)
+                            .frame(width: 70, height: 70)
+                            .overlay(
+                                Circle().stroke(Color.black.opacity(0.3), lineWidth: 2)
+                            )
                     }
+                    .padding(.bottom, 40)
+                    // (Tombol bulat nggak usah diputar karena bentuknya lingkaran, tetep sama diliat dari mana aja)
                 }
             } else {
                 Color.black.ignoresSafeArea()
@@ -75,11 +60,22 @@ struct ContentView: View {
         }
         .onAppear {
             camera.start()
-            // Pantau rotasi pas load
+            // Pasangkan notifikasi rotasi untuk mutar UI secara halus
             NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: .main) { _ in
-                let orientation = UIDevice.current.orientation
-                if orientation.isLandscape || orientation.isPortrait {
-                    self.isLandscape = orientation.isLandscape
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    let orientation = UIDevice.current.orientation
+                    switch orientation {
+                    case .landscapeLeft:
+                        self.uiRotation = 90
+                    case .landscapeRight:
+                        self.uiRotation = -90
+                    case .portraitUpsideDown:
+                        self.uiRotation = 180
+                    case .portrait:
+                        self.uiRotation = 0
+                    default:
+                        break
+                    }
                 }
             }
         }
