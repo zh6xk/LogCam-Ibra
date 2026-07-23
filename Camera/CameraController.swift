@@ -26,6 +26,8 @@ final class CameraController: NSObject, ObservableObject {
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 if granted {
                     self.configureSession()
+                } else {
+                    print("Izin kamera ditolak")
                 }
             }
         default:
@@ -36,7 +38,9 @@ final class CameraController: NSObject, ObservableObject {
     private func configureSession() {
         sessionQueue.async {
             self.session.beginConfiguration()
-            self.session.sessionPreset = .inputPriority
+            
+            // Hapus .inputPriority. Di beberapa iOS lama/device non-Pro, ini bikin crash kalau format belum di-lock
+            self.session.sessionPreset = .high
 
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
                 print("Kamera tidak ditemukan")
@@ -52,27 +56,31 @@ final class CameraController: NSObject, ObservableObject {
                 }
             } catch {
                 print("Gagal buat input: \(error)")
+                self.session.commitConfiguration()
+                return
             }
 
             self.videoDataOutput.alwaysDiscardsLateVideoFrames = true
-            
             if self.session.canAddOutput(self.videoDataOutput) {
                 self.session.addOutput(self.videoDataOutput)
             }
             
-            let targetFormat = kCVPixelFormatType_422YpCbCr10BiPlanarFullRange
-            if self.videoDataOutput.availableVideoPixelFormatTypes.contains(targetFormat) {
-                self.videoDataOutput.videoSettings = [
-                    kCVPixelBufferPixelFormatTypeKey as String: Int(targetFormat)
-                ]
-            }
+            // Set format ke 32BGRA (paling safe buat semua iPhone). 
+            // 10-bit YUV sering bikin force close kalau device gak kuat nge-buffer ke shader.
+            self.videoDataOutput.videoSettings = [
+                kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
+            ]
 
             if #available(iOS 17.0, *) {
                 if let logFormat = device.formats.first(where: { $0.supportedColorSpaces.contains(.appleLog) }) {
-                    try? device.lockForConfiguration()
-                    device.activeFormat = logFormat
-                    device.activeColorSpace = .appleLog
-                    device.unlockForConfiguration()
+                    do {
+                        try device.lockForConfiguration()
+                        device.activeFormat = logFormat
+                        device.activeColorSpace = .appleLog
+                        device.unlockForConfiguration()
+                    } catch {
+                        print("Gagal lock device: \(error)")
+                    }
                 }
             }
 
