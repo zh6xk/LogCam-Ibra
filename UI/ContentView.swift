@@ -12,8 +12,13 @@ struct ContentView: View {
                     .padding(.bottom, 120)
             } else {
                 Color.black.ignoresSafeArea()
-                Text("Memuat Kamera...")
-                    .foregroundColor(.white)
+                VStack {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    Text("Meminta izin / Memuat Kamera...")
+                        .foregroundColor(.white)
+                        .padding(.top, 10)
+                }
             }
         }
     }

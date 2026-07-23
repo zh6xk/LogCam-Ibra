@@ -10,7 +10,22 @@ final class CameraController: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        configureSession()
+        checkPermission()
+    }
+    
+    func checkPermission() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            self.configureSession()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                if granted {
+                    self.configureSession()
+                }
+            }
+        default:
+            print("Izin kamera ditolak")
+        }
     }
 
     func configureSession() {
@@ -31,21 +46,23 @@ final class CameraController: NSObject, ObservableObject {
                     self.session.addInput(input)
                 }
             } catch {
-                print("Gagal buat input: \\(error)")
+                print("Gagal buat input: \(error)")
             }
 
             self.videoDataOutput.alwaysDiscardsLateVideoFrames = true
             
-            // Set 10-bit YUV kalau disupport buat raw data terbaik sebelum shader
-            self.videoDataOutput.videoSettings = [
-                kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_422YpCbCr10BiPlanarFullRange)
-            ]
+            // Hindari force close kalau device gak support 10-bit YUV
+            let targetFormat = kCVPixelFormatType_422YpCbCr10BiPlanarFullRange
+            if self.videoDataOutput.availableVideoPixelFormatTypes.contains(targetFormat) {
+                self.videoDataOutput.videoSettings = [
+                    kCVPixelBufferPixelFormatTypeKey as String: Int(targetFormat)
+                ]
+            }
             
             if self.session.canAddOutput(self.videoDataOutput) {
                 self.session.addOutput(self.videoDataOutput)
             }
 
-            // Apple Log native
             if #available(iOS 17.0, *) {
                 if let logFormat = device.formats.first(where: { $0.supportedColorSpaces.contains(.appleLog) }) {
                     try? device.lockForConfiguration()
