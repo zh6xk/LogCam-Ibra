@@ -37,8 +37,8 @@ kernel void sLog3Encode(texture2d<float, access::read> inTexture [[texture(0)]],
     
     // 4. Manual Desaturation tambahan 
     float luma = dot(linearColor, float3(0.2126, 0.7152, 0.0722));
-    // Bikin 95% desaturated (naik dari 75%)
-    linearColor = mix(linearColor, float3(luma), 0.95);
+    // Set ke 40% desaturated sesuai permintaan user
+    linearColor = mix(linearColor, float3(luma), 0.40);
 
     // 5. Encode ke S-Log3
     float3 logColor;
