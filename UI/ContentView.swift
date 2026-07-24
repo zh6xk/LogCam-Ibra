@@ -15,7 +15,7 @@ struct ContentView: View {
             ZStack {
                 if camera.isRunning {
                     // Kamera 100% full screen
-                    CameraPreviewView(session: camera.session)
+                    CameraPreviewView(renderer: camera.previewRenderer)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .ignoresSafeArea(.all)
                     

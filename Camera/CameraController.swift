@@ -191,15 +191,19 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                         CMSampleBufferGetSampleTimingInfo(sampleBuffer, at: 0, timingInfoOut: &timingInfo)
                         var formatDescription: CMVideoFormatDescription?
                         CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: processedBuffer, formatDescriptionOut: &formatDescription)
-                        
+                            
                         if let fd = formatDescription {
+                            var newSampleBuffer: CMSampleBuffer?
                             CMSampleBufferCreateReadyWithImageBuffer(
                                 allocator: kCFAllocatorDefault,
                                 imageBuffer: processedBuffer,
                                 formatDescription: fd,
                                 sampleTiming: &timingInfo,
-                                sampleBufferOut: &bufferToWrite
+                                sampleBufferOut: &newSampleBuffer
                             )
+                            if let nsb = newSampleBuffer {
+                                bufferToWrite = nsb
+                            }
                         }
                     }
                 }
