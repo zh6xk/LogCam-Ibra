@@ -37,7 +37,7 @@ struct ContentView: View {
                                     )
                             }
                             // Tambahin padding bawah supaya tidak ketabrak / terlalu nempel dengan home indicator
-                            .padding(.bottom, 60)
+                            .padding(.bottom, 80)
                         }
                     } else {
                         // Landscape Layout
@@ -60,7 +60,7 @@ struct ContentView: View {
                                         Circle().stroke(Color.gray.opacity(0.5), lineWidth: 1)
                                     )
                             }
-                            .padding(.trailing, 40)
+                            .padding(.trailing, 80)
                         }
                     }
                 } else {
