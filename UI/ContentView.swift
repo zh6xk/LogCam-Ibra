@@ -13,9 +13,6 @@ struct ContentView: View {
                     // LAYAR PREVIEW: 
                     // Pakai full screen agar center tanpa kepotong/offset
                     CameraPreviewView(renderer: camera.previewRenderer)
-                        // Paksa frame sesuai geometry pembungkus terluar layar (ignoresSafeArea)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2) // Kunci di center murni
                         .ignoresSafeArea(.all)
                     
                     // UI KONTROL (Tombol Shutter Saja di layar bersih, TANPA PANEL HITAM)

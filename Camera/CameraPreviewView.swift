@@ -1,24 +1,35 @@
 import SwiftUI
 import MetalKit
 
-struct CameraPreviewView: UIViewRepresentable {
+// Ganti jadi UIViewControllerRepresentable biar view dapet frame Lifecycle yang utuh dari awal
+struct CameraPreviewView: UIViewControllerRepresentable {
     @ObservedObject var renderer: LogPreviewRenderer
     
-    func makeUIView(context: Context) -> MTKView {
+    func makeUIViewController(context: Context) -> UIViewController {
+        let vc = UIViewController()
+        vc.view.backgroundColor = .black
+        
         let mtkView = MTKView(frame: UIScreen.main.bounds, device: renderer.device)
         mtkView.backgroundColor = .black
         mtkView.delegate = renderer
         mtkView.framebufferOnly = false
         mtkView.colorPixelFormat = .bgra8Unorm
-        // Set ke aspectFit agar data kamera asli kelihatan utuh
-        // SwiftUI yang akan mengatur stretch-nya lewat Frame
         mtkView.contentMode = .scaleAspectFill
-        mtkView.translatesAutoresizingMaskIntoConstraints = true // Matikan custom constraint
-        mtkView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         
-        return mtkView
+        // Pake autolayout beneran biar nutup 4 sisi 
+        mtkView.translatesAutoresizingMaskIntoConstraints = false
+        vc.view.addSubview(mtkView)
+        
+        NSLayoutConstraint.activate([
+            mtkView.topAnchor.constraint(equalTo: vc.view.topAnchor),
+            mtkView.bottomAnchor.constraint(equalTo: vc.view.bottomAnchor),
+            mtkView.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor),
+            mtkView.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor)
+        ])
+        
+        return vc
     }
     
-    func updateUIView(_ uiView: MTKView, context: Context) {
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
     }
 }
