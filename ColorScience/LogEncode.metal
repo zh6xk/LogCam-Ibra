@@ -17,8 +17,10 @@ kernel void sLog3Encode(texture2d<float, access::read> inTexture [[texture(0)]],
     float3 logColor;
 
     for (int i = 0; i < 3; i++) {
+        // Dekode Rec.709 gamma bawaan kamera ke linear light
         float t = rec709_to_linear(color[i]);
         
+        // S-Log3 Encode
         if (t >= 0.01125) {
             logColor[i] = (420.0 + log10((t + 0.01) / 0.19) * 261.5) / 1023.0;
         } else {

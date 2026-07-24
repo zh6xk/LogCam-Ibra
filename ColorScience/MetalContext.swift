@@ -8,9 +8,11 @@ class MetalContext {
     let commandQueue: MTLCommandQueue
     var pipelineState: MTLComputePipelineState?
     var textureCache: CVMetalTextureCache?
-    var pixelBufferPool: CVPixelBufferPool?
-    var poolWidth: Int = 0
-    var poolHeight: Int = 0
+    
+    // Pixel Buffer Pool untuk Output (mencegah in-place read/write dan memori leak)
+    private var pixelBufferPool: CVPixelBufferPool?
+    private var poolWidth: Int = 0
+    private var poolHeight: Int = 0
 
     init() {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -30,6 +32,26 @@ class MetalContext {
         self.pipelineState = try? device.makeComputePipelineState(function: function)
     }
     
+    private func setupPixelBufferPool(width: Int, height: Int) {
+        if pixelBufferPool != nil && poolWidth == width && poolHeight == height { return }
+        
+        let poolAttributes: [String: Any] = [
+            kCVPixelBufferPoolMinimumBufferCountKey as String: 3
+        ]
+        
+        let bufferAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+        ]
+        
+        CVPixelBufferPoolCreate(kCFAllocatorDefault, poolAttributes as CFDictionary, bufferAttributes as CFDictionary, &pixelBufferPool)
+        
+        poolWidth = width
+        poolHeight = height
+    }
+    
     func applyLogShader(to inputPixelBuffer: CVPixelBuffer) -> CVPixelBuffer? {
         guard let pipelineState = pipelineState,
               let textureCache = textureCache else { return nil }
@@ -37,49 +59,59 @@ class MetalContext {
         let width = CVPixelBufferGetWidth(inputPixelBuffer)
         let height = CVPixelBufferGetHeight(inputPixelBuffer)
         
-        // Buat atau re-create pool jika dimensi berubah
-        if pixelBufferPool == nil || poolWidth != width || poolHeight != height {
-            let poolAttributes: [String: Any] = [
-                kCVPixelBufferPoolMinimumBufferCountKey as String: 3
-            ]
-            let bufferAttributes: [String: Any] = [
-                kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA),
-                kCVPixelBufferWidthKey as String: width,
-                kCVPixelBufferHeightKey as String: height,
-                kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-            ]
-            CVPixelBufferPoolCreate(kCFAllocatorDefault, poolAttributes as CFDictionary, bufferAttributes as CFDictionary, &pixelBufferPool)
-            poolWidth = width
-            poolHeight = height
-        }
+        // Pastikan pool siap
+        setupPixelBufferPool(width: width, height: height)
         
         guard let pool = pixelBufferPool else { return nil }
+        
+        // Alokasikan output buffer dari pool
         var outputPixelBufferOut: CVPixelBuffer?
-        CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &outputPixelBufferOut)
-        guard let outputPixelBuffer = outputPixelBufferOut else {
-            print("Warning: Gagal alokasi buffer dari pool, skip frame")
+        let status = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &outputPixelBufferOut)
+        
+        guard status == kCVReturnSuccess, let outputPixelBuffer = outputPixelBufferOut else {
+            print("Warning: Gagal alokasi CVPixelBuffer dari pool.")
             return nil
         }
         
+        // Buat Texture Input
         var cvTextureIn: CVMetalTexture?
         CVMetalTextureCacheCreateTextureFromImage(
-            kCFAllocatorDefault, textureCache, inputPixelBuffer, nil, .bgra8Unorm, width, height, 0, &cvTextureIn
+            kCFAllocatorDefault,
+            textureCache,
+            inputPixelBuffer,
+            nil,
+            .bgra8Unorm,
+            width,
+            height,
+            0,
+            &cvTextureIn
         )
         
+        // Buat Texture Output
         var cvTextureOut: CVMetalTexture?
         CVMetalTextureCacheCreateTextureFromImage(
-            kCFAllocatorDefault, textureCache, outputPixelBuffer, nil, .bgra8Unorm, width, height, 0, &cvTextureOut
+            kCFAllocatorDefault,
+            textureCache,
+            outputPixelBuffer,
+            nil,
+            .bgra8Unorm,
+            width,
+            height,
+            0,
+            &cvTextureOut
         )
         
-        guard let inTex = cvTextureIn, let inTexture = CVMetalTextureGetTexture(inTex),
-              let outTex = cvTextureOut, let outTexture = CVMetalTextureGetTexture(outTex) else { return nil }
+        guard let cvTexIn = cvTextureIn, let inTexture = CVMetalTextureGetTexture(cvTexIn),
+              let cvTexOut = cvTextureOut, let outTexture = CVMetalTextureGetTexture(cvTexOut) else {
+            return nil
+        }
         
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let encoder = commandBuffer.makeComputeCommandEncoder() else { return nil }
         
         encoder.setComputePipelineState(pipelineState)
-        encoder.setTexture(inTexture, index: 0)
-        encoder.setTexture(outTexture, index: 1)
+        encoder.setTexture(inTexture, index: 0) // Input
+        encoder.setTexture(outTexture, index: 1) // Output
         
         let threadGroupSize = MTLSize(width: 8, height: 8, depth: 1)
         let threadGroups = MTLSize(
@@ -92,7 +124,7 @@ class MetalContext {
         encoder.endEncoding()
         
         commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        commandBuffer.waitUntilCompleted() // Tunggu rendering selesai
         
         return outputPixelBuffer
     }

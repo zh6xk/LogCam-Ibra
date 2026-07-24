@@ -2,37 +2,21 @@ import SwiftUI
 import MetalKit
 
 struct CameraPreviewView: UIViewRepresentable {
-    @ObservedObject var camera: CameraController
+    @ObservedObject var renderer: LogPreviewRenderer
     
     func makeUIView(context: Context) -> MTKView {
-        let mtkView = MTKView(frame: UIScreen.main.bounds)
-        let renderer = LogPreviewRenderer(metalView: mtkView)
-        context.coordinator.renderer = renderer
-        
-        // Simpan referensi ke coordinator untuk update frame
-        camera.onFrameUpdate = { pixelBuffer in
-            renderer.currentPixelBuffer = pixelBuffer
-            // Pastikan draw dipanggil di main thread untuk sync layar
-            DispatchQueue.main.async {
-                mtkView.setNeedsDisplay()
-            }
-        }
-        
+        let mtkView = MTKView(frame: UIScreen.main.bounds, device: renderer.device)
+        mtkView.backgroundColor = .black
+        mtkView.delegate = renderer
+        mtkView.framebufferOnly = false
+        mtkView.colorPixelFormat = .bgra8Unorm
+        // Set content mode biar nggak melar (resize aspect fill butuh matrix math tambahan, 
+        // tapi blit command cuma bisa copy 1:1, jadi kita terima default frame dlu)
+        mtkView.contentMode = .scaleAspectFill
         return mtkView
     }
     
     func updateUIView(_ uiView: MTKView, context: Context) {
-        // Handle rotasi untuk MTKView
-        DispatchQueue.main.async {
-            uiView.frame = UIScreen.main.bounds
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-    
-    class Coordinator {
-        var renderer: LogPreviewRenderer?
+        // UI Size Updates kalau ada
     }
 }

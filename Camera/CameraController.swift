@@ -10,6 +10,7 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
     let audioDataOutput = AVCaptureAudioDataOutput()
     
     var assetWriterManager = AssetWriterManager()
+    let previewRenderer = LogPreviewRenderer()
     
     @Published var isRunning = false
     @Published var isRecording = false
@@ -103,12 +104,25 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                 self.session.addOutput(self.audioDataOutput)
             }
 
+            // Disable Smart HDR / Video HDR supaya ISP tidak melakukan tone-mapping ke log data
+            try? device.lockForConfiguration()
+            if device.activeFormat.isVideoHDRSupported {
+                device.automaticallyAdjustsVideoHDREnabled = false
+                device.isVideoHDREnabled = false
+            }
+            device.unlockForConfiguration()
+
             if #available(iOS 17.0, *) {
                 if let logFormat = device.formats.first(where: { $0.supportedColorSpaces.contains(.appleLog) }) {
                     do {
                         try device.lockForConfiguration()
                         device.activeFormat = logFormat
                         device.activeColorSpace = .appleLog
+                        // Jika Apple Log native aktif, kembalikan ke default karena Apple Log butuh ini
+                        if device.activeFormat.isVideoHDRSupported {
+                            device.automaticallyAdjustsVideoHDREnabled = true
+                            device.isVideoHDREnabled = true
+                        }
                         device.unlockForConfiguration()
                     } catch {}
                 }
@@ -179,22 +193,25 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                         CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: processedBuffer, formatDescriptionOut: &formatDescription)
                         
                         if let fd = formatDescription {
-                            var newSampleBuffer: CMSampleBuffer?
-                            CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: processedBuffer, formatDescription: fd, sampleTiming: &timingInfo, sampleBufferOut: &newSampleBuffer)
-                            if let nsb = newSampleBuffer {
-                                bufferToWrite = nsb
-                            }
+                            CMSampleBufferCreateReadyWithImageBuffer(
+                                allocator: kCFAllocatorDefault,
+                                imageBuffer: processedBuffer,
+                                formatDescription: fd,
+                                sampleTiming: &timingInfo,
+                                sampleBufferOut: &bufferToWrite
+                            )
                         }
                     }
                 }
                 
-                // Kirim frame ke preview (MTKView)
-                self.onFrameUpdate?(finalPixelBuffer)
+                // Update preview menggunakan MTKView renderer
+                previewRenderer.update(with: finalPixelBuffer)
             }
         }
         
         if isRecording {
             assetWriterManager.write(sampleBuffer: bufferToWrite, isVideo: isVideo)
         }
+
     }
 }
