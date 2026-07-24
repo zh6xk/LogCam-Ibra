@@ -1,8 +1,6 @@
 #include <metal_stdlib>
 using namespace metal;
 
-// Konversi Rec.709 Linear ke S-Gamut3.Cine Linear
-// S-Gamut3.Cine jauh lebih luas, jadi warna Rec.709 akan otomatis terdesaturasi (flat)
 float3 rec709_to_sgamut3cine(float3 rgb) {
     float r = rgb.r * 0.7629 + rgb.g * 0.1706 + rgb.b * 0.0665;
     float g = rgb.r * 0.0818 + rgb.g * 0.8872 + rgb.b * 0.0310;
@@ -30,15 +28,18 @@ kernel void sLog3Encode(texture2d<float, access::read> inTexture [[texture(0)]],
     linearColor.g = rec709_to_linear(color.g);
     linearColor.b = rec709_to_linear(color.b);
     
-    // 2. Exposure Compensation
-    // Auto-exposure iPhone terlalu terang untuk standar Log. 
-    // Turunkan ~0.75 stop (x 0.6) agar middle-gray jatuh persis di 41% IRE S-Log3.
-    linearColor *= 0.6;
+    // 2. Exposure Compensation yang lebih ekstrem
+    // Kita turunkan sampai 0.35 supaya lebih abu-abu mati.
+    linearColor *= 0.35;
 
-    // 3. Konversi Gamut (Bikin warna jadi pudar/abu-abu khas cine)
+    // 3. Konversi Gamut ke S-Gamut3.Cine (memudarkan saturasi)
     linearColor = rec709_to_sgamut3cine(linearColor);
+    
+    // 4. Manual Desaturation tambahan 
+    float luma = dot(linearColor, float3(0.2126, 0.7152, 0.0722));
+    linearColor = mix(float3(luma), linearColor, 0.75); // Bikin 25% desaturated
 
-    // 4. Encode ke S-Log3
+    // 5. Encode ke S-Log3
     float3 logColor;
     for (int i = 0; i < 3; i++) {
         float t = linearColor[i];

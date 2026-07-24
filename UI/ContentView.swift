@@ -14,9 +14,9 @@ struct ContentView: View {
         GeometryReader { geometry in
             ZStack {
                 if camera.isRunning {
-                    // Kamera 100% full screen
+                    // Kamera full screen, tengahin beneran pakai frame proxy
                     CameraPreviewView(renderer: camera.previewRenderer)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea(.all)
                     
                     // UI Overlay (Layout Landscape vs Portrait)
