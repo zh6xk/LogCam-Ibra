@@ -10,13 +10,16 @@ struct CameraPreviewView: UIViewRepresentable {
         mtkView.delegate = renderer
         mtkView.framebufferOnly = false
         mtkView.colorPixelFormat = .bgra8Unorm
-        // Ubah dari scaleAspectFill ke scaleAspectFit agar tidak lari ke kiri/kanan
+        // Kembali ke aspectFill agar viewport tidak miring/terpotong aneh, 
+        // tapi di ContentView kita pastikan bounding boxnya sesuai layar
         mtkView.contentMode = .scaleAspectFill
         mtkView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Paksa layer MTKView untuk fill superview saat render
+        mtkView.layer.contentsGravity = .resizeAspectFill
         return mtkView
     }
     
     func updateUIView(_ uiView: MTKView, context: Context) {
-        // UI Size Updates kalau ada
     }
 }
