@@ -29,15 +29,16 @@ kernel void sLog3Encode(texture2d<float, access::read> inTexture [[texture(0)]],
     linearColor.b = rec709_to_linear(color.b);
     
     // 2. Exposure Compensation yang lebih ekstrem
-    // Kita turunkan sampai 0.35 supaya lebih abu-abu mati.
-    linearColor *= 0.35;
+    // Kita turunkan lebih redup lagi (0.28) supaya makin flat.
+    linearColor *= 0.28;
 
     // 3. Konversi Gamut ke S-Gamut3.Cine (memudarkan saturasi)
     linearColor = rec709_to_sgamut3cine(linearColor);
     
     // 4. Manual Desaturation tambahan 
     float luma = dot(linearColor, float3(0.2126, 0.7152, 0.0722));
-    linearColor = mix(float3(luma), linearColor, 0.75); // Bikin 25% desaturated
+    // Bikin 95% desaturated (naik dari 75%)
+    linearColor = mix(linearColor, float3(luma), 0.95);
 
     // 5. Encode ke S-Log3
     float3 logColor;
