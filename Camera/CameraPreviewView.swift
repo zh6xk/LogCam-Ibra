@@ -5,18 +5,17 @@ struct CameraPreviewView: UIViewRepresentable {
     @ObservedObject var renderer: LogPreviewRenderer
     
     func makeUIView(context: Context) -> MTKView {
-        let mtkView = MTKView(frame: .zero, device: renderer.device)
+        let mtkView = MTKView(frame: UIScreen.main.bounds, device: renderer.device)
         mtkView.backgroundColor = .black
         mtkView.delegate = renderer
         mtkView.framebufferOnly = false
         mtkView.colorPixelFormat = .bgra8Unorm
-        // Kembali ke aspectFill agar viewport tidak miring/terpotong aneh, 
-        // tapi di ContentView kita pastikan bounding boxnya sesuai layar
+        // Set ke aspectFit agar data kamera asli kelihatan utuh
+        // SwiftUI yang akan mengatur stretch-nya lewat Frame
         mtkView.contentMode = .scaleAspectFill
-        mtkView.translatesAutoresizingMaskIntoConstraints = false
+        mtkView.translatesAutoresizingMaskIntoConstraints = true // Matikan custom constraint
+        mtkView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         
-        // Paksa layer MTKView untuk fill superview saat render
-        mtkView.layer.contentsGravity = .resizeAspectFill
         return mtkView
     }
     

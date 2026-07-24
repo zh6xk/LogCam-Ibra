@@ -5,83 +5,64 @@ struct ContentView: View {
     
     // Status UI
     @State private var isPortrait: Bool = UIDevice.current.orientation.isPortrait || UIDevice.current.orientation == .unknown
-    @State private var uiRotation: Double = 0
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 if camera.isRunning {
                     // LAYAR PREVIEW: 
-                    // Pakai fill screen agar center, dipotong di bawah oleh panel hitam
+                    // Pakai full screen agar center tanpa kepotong/offset
                     CameraPreviewView(renderer: camera.previewRenderer)
+                        // Paksa frame sesuai geometry pembungkus terluar layar (ignoresSafeArea)
                         .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2) // Kunci di center murni
                         .ignoresSafeArea(.all)
                     
-                    // UI KONTROL (Mulai dari basic: Tombol Shutter Saja di layar bersih)
-                    // Posisinya merespon Portrait / Landscape secara eksplisit
+                    // UI KONTROL (Tombol Shutter Saja di layar bersih, TANPA PANEL HITAM)
                     if isPortrait {
                         VStack {
                             Spacer()
                             
-                            // Kotak hitam di bawah untuk menu/shutter
-                            ZStack {
-                                Color.black
-                                
-                                HStack {
-                                    Spacer()
-                                    // Tombol Shutter (Basic)
-                                    Button(action: {
-                                        camera.toggleRecording()
-                                    }) {
-                                        Circle()
-                                            .fill(camera.isRecording ? Color.red : Color.clear)
-                                            .frame(width: 65, height: 65)
-                                            .overlay(
-                                                Circle().stroke(Color.white, lineWidth: 3)
-                                            )
-                                            .padding(4)
-                                            .overlay(
-                                                Circle().stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                                            )
-                                    }
-                                    Spacer()
-                                }
+                            // Tombol Shutter Mengambang di Bawah
+                            Button(action: {
+                                camera.toggleRecording()
+                            }) {
+                                Circle()
+                                    // Putih saat idle, Merah saat record
+                                    .fill(camera.isRecording ? Color.red : Color.white)
+                                    .frame(width: 65, height: 65)
+                                    .overlay(
+                                        Circle().stroke(Color.white, lineWidth: 3)
+                                    )
+                                    .padding(4)
+                                    .overlay(
+                                        Circle().stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                                    )
                             }
-                            .frame(height: 120) // Tinggi area hitam bawah
-                            .ignoresSafeArea(edges: .bottom)
+                            .padding(.bottom, 40)
                         }
                     } else {
                         // Landscape Layout
                         HStack {
                             Spacer()
                             
-                            // Kotak hitam di kanan untuk menu/shutter
-                            ZStack {
-                                Color.black
-                                
-                                VStack {
-                                    Spacer()
-                                    // Tombol Shutter (Basic)
-                                    Button(action: {
-                                        camera.toggleRecording()
-                                    }) {
-                                        Circle()
-                                            .fill(camera.isRecording ? Color.red : Color.clear)
-                                            .frame(width: 65, height: 65)
-                                            .overlay(
-                                                Circle().stroke(Color.white, lineWidth: 3)
-                                            )
-                                            .padding(4)
-                                            .overlay(
-                                                Circle().stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                                            )
-                                    }
-                                    .padding(.bottom, 20)
-                                }
+                            // Tombol Shutter Mengambang di Kanan
+                            Button(action: {
+                                camera.toggleRecording()
+                            }) {
+                                Circle()
+                                    // Putih saat idle, Merah saat record
+                                    .fill(camera.isRecording ? Color.red : Color.white)
+                                    .frame(width: 65, height: 65)
+                                    .overlay(
+                                        Circle().stroke(Color.white, lineWidth: 3)
+                                    )
+                                    .padding(4)
+                                    .overlay(
+                                        Circle().stroke(Color.gray.opacity(0.5), lineWidth: 1)
+                                    )
                             }
-                            .frame(width: 120) // Lebar area hitam kanan
-                            .ignoresSafeArea(edges: .trailing)
+                            .padding(.trailing, 40)
                         }
                     }
                 } else {
