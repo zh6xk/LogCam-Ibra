@@ -13,6 +13,7 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
     
     @Published var isRunning = false
     @Published var isRecording = false
+    var onFrameUpdate: ((CVPixelBuffer) -> Void)?
     private var isConfigured = false
     private var currentOrientation: AVCaptureVideoOrientation = .portrait
 
@@ -73,7 +74,15 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
                 self.session.addInput(input)
             }
 
-            if let audioDevice = AVCaptureDevice.default(for: .audio),
+            // Matikan Smart HDR / Video HDR supaya ISP tidak melakukan tone-mapping sebelum Metal shader
+            try? device.lockForConfiguration()
+            if device.activeFormat.isVideoHDRSupported {
+                device.automaticallyAdjustsVideoHDREnabled = false
+                device.isVideoHDREnabled = false
+            }
+            device.unlockForConfiguration()
+
+        if let audioDevice = AVCaptureDevice.default(for: .audio),
                let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
                self.session.canAddInput(audioInput) {
                 self.session.addInput(audioInput)
@@ -148,24 +157,44 @@ final class CameraController: NSObject, ObservableObject, AVCaptureVideoDataOutp
     }
     
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Terapkan Shader Metal untuk Video S-Log3 kalau device tidak support Apple Log Native
         let isVideo = output === videoDataOutput
+        
+        var bufferToWrite = sampleBuffer
         
         if isVideo {
             if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-                // Di sini kita cek apakah format saat ini Apple Log. 
-                // Kalau bukan, kita "paksa" jadi S-Log3 pake Metal.
+                var finalPixelBuffer = pixelBuffer
+                
+                // Kalau BUKAN Apple Log native, terapkan S-Log3 via Metal Compute Shader
                 if #available(iOS 17.0, *), videoDevice?.activeColorSpace == .appleLog {
                     // Biarkan, sudah native LOG
                 } else {
-                    // Terapkan S-Log3 via Metal Compute Shader
-                    MetalContext.shared.applyLogShader(to: pixelBuffer)
+                    if let processedBuffer = MetalContext.shared.applyLogShader(to: pixelBuffer) {
+                        finalPixelBuffer = processedBuffer
+                        
+                        // Bungkus pixel buffer baru menjadi CMSampleBuffer untuk dikirim ke AssetWriter
+                        var timingInfo = CMSampleTimingInfo()
+                        CMSampleBufferGetSampleTimingInfo(sampleBuffer, at: 0, timingInfoOut: &timingInfo)
+                        var formatDescription: CMVideoFormatDescription?
+                        CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: processedBuffer, formatDescriptionOut: &formatDescription)
+                        
+                        if let fd = formatDescription {
+                            var newSampleBuffer: CMSampleBuffer?
+                            CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: processedBuffer, formatDescription: fd, sampleTiming: &timingInfo, sampleBufferOut: &newSampleBuffer)
+                            if let nsb = newSampleBuffer {
+                                bufferToWrite = nsb
+                            }
+                        }
+                    }
                 }
+                
+                // Kirim frame ke preview (MTKView)
+                self.onFrameUpdate?(finalPixelBuffer)
             }
         }
         
         if isRecording {
-            assetWriterManager.write(sampleBuffer: sampleBuffer, isVideo: isVideo)
+            assetWriterManager.write(sampleBuffer: bufferToWrite, isVideo: isVideo)
         }
     }
 }

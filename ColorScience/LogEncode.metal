@@ -1,8 +1,8 @@
 #include <metal_stdlib>
 using namespace metal;
 
-float srgb_to_linear(float c) {
-    return (c <= 0.04045) ? (c / 12.92) : pow((c + 0.055) / 1.055, 2.4);
+float rec709_to_linear(float c) {
+    return (c < 0.081) ? (c / 4.5) : pow((c + 0.099) / 1.099, 1.0 / 0.45);
 }
 
 kernel void sLog3Encode(texture2d<float, access::read> inTexture [[texture(0)]],
@@ -17,8 +17,7 @@ kernel void sLog3Encode(texture2d<float, access::read> inTexture [[texture(0)]],
     float3 logColor;
 
     for (int i = 0; i < 3; i++) {
-        // Dekode sRGB gamma bawaan kamera ke linear light
-        float t = srgb_to_linear(color[i]);
+        float t = rec709_to_linear(color[i]);
         
         if (t >= 0.01125) {
             logColor[i] = (420.0 + log10((t + 0.01) / 0.19) * 261.5) / 1023.0;
